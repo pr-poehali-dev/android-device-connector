@@ -90,6 +90,7 @@ interface DevicesSectionProps {
 function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: DevicesSectionProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const handleConnect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -106,10 +107,23 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
     setSelected(null);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDeleteRequest = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setSelected(null);
-    onDelete(id);
+    setConfirmDelete(id);
+  };
+
+  const handleDeleteConfirm = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirmDelete) {
+      onDelete(confirmDelete);
+      setSelected(null);
+      setConfirmDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDelete(null);
   };
 
   return (
@@ -209,12 +223,30 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
                       {connecting === device.id ? "Распознавание..." : "Подключить"}
                     </button>
                   )}
-                  <button
-                    onClick={(e) => handleDelete(e, device.id)}
-                    className="text-xs border border-border hover:border-danger/40 hover:text-danger px-3 py-1.5 rounded transition-colors text-muted-foreground"
-                  >
-                    Удалить
-                  </button>
+                  {confirmDelete === device.id ? (
+                    <div className="flex items-center gap-2 animate-fade-in-up">
+                      <span className="text-xs text-muted-foreground">Удалить?</span>
+                      <button
+                        onClick={handleDeleteConfirm}
+                        className="text-xs bg-danger text-white hover:bg-danger/90 px-3 py-1.5 rounded transition-colors"
+                      >
+                        Да
+                      </button>
+                      <button
+                        onClick={handleDeleteCancel}
+                        className="text-xs border border-border hover:border-border/80 px-3 py-1.5 rounded transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => handleDeleteRequest(e, device.id)}
+                      className="text-xs border border-border hover:border-danger/40 hover:text-danger px-3 py-1.5 rounded transition-colors text-muted-foreground"
+                    >
+                      Удалить
+                    </button>
+                  )}
                 </div>
               </div>
             )}
