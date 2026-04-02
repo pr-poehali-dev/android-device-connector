@@ -94,6 +94,7 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
   const [confirmDisconnectAll, setConfirmDisconnectAll] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "connected" | "disconnected">("all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const handleConnect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -144,7 +145,8 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
   const filtered = devices.filter(d => {
     const statusMatch = filterStatus === "all" || d.status === filterStatus || (filterStatus === "disconnected" && d.status !== "connected");
     const typeMatch = filterType === "all" || d.type === filterType;
-    return statusMatch && typeMatch;
+    const searchMatch = search.trim() === "" || d.name.toLowerCase().includes(search.toLowerCase()) || d.address.toLowerCase().includes(search.toLowerCase());
+    return statusMatch && typeMatch && searchMatch;
   });
 
   return (
@@ -182,6 +184,25 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
               Отключить все
             </button>
           )
+        )}
+      </div>
+
+      <div className="relative mb-3">
+        <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск по названию или MAC-адресу..."
+          className="w-full bg-muted/40 border border-border rounded pl-8 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Icon name="X" size={12} />
+          </button>
         )}
       </div>
 
