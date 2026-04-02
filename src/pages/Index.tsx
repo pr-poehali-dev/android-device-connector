@@ -21,7 +21,7 @@ interface FoundDevice {
   address: string;
 }
 
-const MOCK_DEVICES: Device[] = [
+const INITIAL_DEVICES: Device[] = [
   { id: "1", name: "HP LaserJet Pro M404n", type: "printer", status: "connected", signal: 92, address: "A4:C3:F0:12:45:BE", lastSeen: "Сейчас" },
   { id: "2", name: "Logitech MX Keys", type: "keyboard", status: "connected", signal: 87, address: "DE:AD:BE:EF:11:22", lastSeen: "Сейчас" },
   { id: "3", name: "Canon DR-S130", type: "scanner", status: "disconnected", signal: 0, address: "B2:F1:9A:33:77:CC", lastSeen: "2 часа назад" },
@@ -80,24 +80,67 @@ function SignalBar({ value }: { value: number }) {
   );
 }
 
-function DevicesSection() {
+interface DevicesSectionProps {
+  devices: Device[];
+  onConnect: (id: string) => void;
+  onDisconnectAll: () => void;
+  onDelete: (id: string) => void;
+}
+
+function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: DevicesSectionProps) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null);
+
+  const handleConnect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setConnecting(id);
+    setTimeout(() => {
+      onConnect(id);
+      setConnecting(null);
+    }, 2000);
+  };
+
+  const handleDisconnectAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDisconnectAll();
+    setSelected(null);
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelected(null);
+    onDelete(id);
+  };
 
   return (
     <div className="animate-fade-in-up">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Мои устройства</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{MOCK_DEVICES.filter(d => d.status === "connected").length} из {MOCK_DEVICES.length} подключено</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {devices.filter(d => d.status === "connected").length} из {devices.length} подключено
+          </p>
         </div>
-        <button className="flex items-center gap-2 text-xs text-primary border border-primary/30 hover:border-primary/60 px-3 py-1.5 rounded transition-colors">
-          <Icon name="Plus" size={12} />
-          Добавить
-        </button>
+        {devices.some(d => d.status === "connected") && (
+          <button
+            onClick={handleDisconnectAll}
+            className="flex items-center gap-2 text-xs text-danger border border-danger/30 hover:border-danger/60 px-3 py-1.5 rounded transition-colors"
+          >
+            <Icon name="BluetoothOff" size={12} />
+            Отключить все
+          </button>
+        )}
       </div>
 
+      {devices.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          <Icon name="Cpu" size={32} className="mx-auto mb-3 opacity-30" />
+          <p>Устройств нет. Добавьте их через «Подключение».</p>
+        </div>
+      )}
+
       <div className="space-y-2">
-        {MOCK_DEVICES.map((device, i) => (
+        {devices.map((device, i) => (
           <div
             key={device.id}
             onClick={() => setSelected(selected === device.id ? null : device.id)}
@@ -108,7 +151,11 @@ function DevicesSection() {
               <div className={`w-10 h-10 rounded flex items-center justify-center shrink-0 ${
                 device.status === "connected" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
               }`}>
-                <Icon name={deviceIcon[device.type]} size={18} fallback="Cpu" />
+                {connecting === device.id ? (
+                  <Icon name="Loader" size={18} className="animate-spin text-primary" />
+                ) : (
+                  <Icon name={deviceIcon[device.type]} size={18} fallback="Cpu" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -116,7 +163,10 @@ function DevicesSection() {
                   <span className="text-xs text-muted-foreground shrink-0">{deviceLabel[device.type]}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <StatusBadge status={device.status} />
+                  {connecting === device.id
+                    ? <span className="text-xs text-warning flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse-dot" />Распознавание...</span>
+                    : <StatusBadge status={device.status} />
+                  }
                   <span className="text-xs text-muted-foreground font-mono">{device.address}</span>
                 </div>
               </div>
@@ -144,15 +194,25 @@ function DevicesSection() {
                 </div>
                 <div className="flex gap-2 mt-3">
                   {device.status === "connected" ? (
-                    <button className="text-xs border border-border hover:border-danger/50 hover:text-danger px-3 py-1.5 rounded transition-colors">
+                    <button
+                      onClick={(e) => handleDisconnectAll(e)}
+                      className="text-xs border border-border hover:border-danger/50 hover:text-danger px-3 py-1.5 rounded transition-colors"
+                    >
                       Отключить
                     </button>
                   ) : (
-                    <button className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded transition-colors">
-                      Подключить
+                    <button
+                      onClick={(e) => handleConnect(e, device.id)}
+                      disabled={connecting === device.id}
+                      className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 px-3 py-1.5 rounded transition-colors"
+                    >
+                      {connecting === device.id ? "Распознавание..." : "Подключить"}
                     </button>
                   )}
-                  <button className="text-xs border border-border hover:border-border/80 px-3 py-1.5 rounded transition-colors text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={(e) => handleDelete(e, device.id)}
+                    className="text-xs border border-border hover:border-danger/40 hover:text-danger px-3 py-1.5 rounded transition-colors text-muted-foreground"
+                  >
                     Удалить
                   </button>
                 </div>
@@ -165,15 +225,23 @@ function DevicesSection() {
   );
 }
 
-function ConnectSection() {
+interface ConnectSectionProps {
+  devices: Device[];
+  onAddDevice: (device: Device) => void;
+}
+
+function ConnectSection({ devices, onAddDevice }: ConnectSectionProps) {
   const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState<FoundDevice[]>([]);
   const [progress, setProgress] = useState(0);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [connected, setConnected] = useState<string[]>([]);
 
   const startScan = () => {
     setScanning(true);
     setFound([]);
     setProgress(0);
+    setConnected([]);
 
     const interval = setInterval(() => {
       setProgress(p => {
@@ -190,6 +258,27 @@ function ConnectSection() {
       setTimeout(() => setFound(prev => [...prev, d]), 1200 + i * 800);
     });
   };
+
+  const handleConnect = (device: FoundDevice) => {
+    if (connected.includes(device.id)) return;
+    setConnecting(device.id);
+    setTimeout(() => {
+      const newDevice: Device = {
+        id: device.id,
+        name: device.name,
+        type: device.type,
+        status: "connected",
+        signal: device.signal,
+        address: device.address,
+        lastSeen: "Сейчас",
+      };
+      onAddDevice(newDevice);
+      setConnecting(null);
+      setConnected(prev => [...prev, device.id]);
+    }, 2200);
+  };
+
+  const alreadyInList = (id: string) => devices.some(d => d.id === id);
 
   return (
     <div className="animate-fade-in-up">
@@ -245,27 +334,47 @@ function ConnectSection() {
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Обнаруженные устройства</p>
           <div className="space-y-2">
-            {found.map((device, i) => (
-              <div
-                key={device.id}
-                className="flex items-center gap-4 p-4 border border-border rounded animate-slide-in hover:border-primary/30 transition-colors"
-                style={{ animationDelay: `${i * 100}ms` }}
-              >
-                <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
-                  <Icon name={deviceIcon[device.type]} size={16} fallback="Cpu" />
+            {found.map((device, i) => {
+              const isConnecting = connecting === device.id;
+              const isConnected = connected.includes(device.id) || alreadyInList(device.id);
+              return (
+                <div
+                  key={device.id}
+                  className="flex items-center gap-4 p-4 border border-border rounded animate-slide-in hover:border-primary/30 transition-colors"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className={`w-9 h-9 rounded flex items-center justify-center shrink-0 ${
+                    isConnected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  }`}>
+                    {isConnecting
+                      ? <Icon name="Loader" size={16} className="animate-spin text-primary" />
+                      : <Icon name={deviceIcon[device.type]} size={16} fallback="Cpu" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{device.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{device.address}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <SignalBar value={device.signal} />
+                    {isConnected ? (
+                      <span className="text-xs text-success flex items-center gap-1">
+                        <Icon name="Check" size={12} />
+                        Добавлено
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleConnect(device)}
+                        disabled={isConnecting}
+                        className="text-xs border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60 px-3 py-1.5 rounded transition-colors"
+                      >
+                        {isConnecting ? "Распознавание..." : "Подключить"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{device.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{device.address}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <SignalBar value={device.signal} />
-                  <button className="text-xs border border-primary/40 text-primary hover:bg-primary/10 px-3 py-1.5 rounded transition-colors">
-                    Подключить
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -273,8 +382,12 @@ function ConnectSection() {
   );
 }
 
-function StatusSection() {
-  const connected = MOCK_DEVICES.filter(d => d.status === "connected");
+interface StatusSectionProps {
+  devices: Device[];
+}
+
+function StatusSection({ devices }: StatusSectionProps) {
+  const connected = devices.filter(d => d.status === "connected");
   const logs = [
     { time: "09:42:11", level: "info", msg: "HP LaserJet Pro M404n — подключено" },
     { time: "09:38:05", level: "info", msg: "Logitech MX Keys — подключено" },
@@ -299,7 +412,7 @@ function StatusSection() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: "Подключено", value: connected.length, icon: "Link", color: "text-success" },
-          { label: "Всего устройств", value: MOCK_DEVICES.length, icon: "Cpu", color: "text-primary" },
+          { label: "Всего устройств", value: devices.length, icon: "Cpu", color: "text-primary" },
           { label: "Bluetooth", value: "Активен", icon: "Bluetooth", color: "text-primary" },
         ].map((stat) => (
           <div key={stat.label} className="border border-border rounded p-4">
@@ -468,19 +581,52 @@ const NAV_ITEMS: { id: Section; label: string; icon: string }[] = [
 export default function Index() {
   const [active, setActive] = useState<Section>("devices");
   const [time, setTime] = useState(new Date());
+  const [devices, setDevices] = useState<Device[]>(INITIAL_DEVICES);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  const handleConnect = (id: string) => {
+    setDevices(prev => prev.map(d =>
+      d.id === id
+        ? { ...d, status: "connected", signal: Math.floor(60 + Math.random() * 35), lastSeen: "Сейчас" }
+        : d
+    ));
+  };
+
+  const handleDisconnectAll = () => {
+    setDevices(prev => prev.map(d =>
+      d.status === "connected"
+        ? { ...d, status: "disconnected", signal: 0, lastSeen: "Только что" }
+        : d
+    ));
+  };
+
+  const handleDelete = (id: string) => {
+    setDevices(prev => prev.filter(d => d.id !== id));
+  };
+
+  const handleAddDevice = (device: Device) => {
+    setDevices(prev => {
+      if (prev.some(d => d.id === device.id)) return prev;
+      return [...prev, device];
+    });
+  };
+
   const renderSection = () => {
     switch (active) {
-      case "devices": return <DevicesSection />;
-      case "connect": return <ConnectSection />;
-      case "status": return <StatusSection />;
-      case "settings": return <SettingsSection />;
-      case "help": return <HelpSection />;
+      case "devices":
+        return <DevicesSection devices={devices} onConnect={handleConnect} onDisconnectAll={handleDisconnectAll} onDelete={handleDelete} />;
+      case "connect":
+        return <ConnectSection devices={devices} onAddDevice={handleAddDevice} />;
+      case "status":
+        return <StatusSection devices={devices} />;
+      case "settings":
+        return <SettingsSection />;
+      case "help":
+        return <HelpSection />;
     }
   };
 
