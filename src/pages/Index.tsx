@@ -92,6 +92,8 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
   const [connecting, setConnecting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmDisconnectAll, setConfirmDisconnectAll] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<"all" | "connected" | "disconnected">("all");
+  const [filterType, setFilterType] = useState<string>("all");
 
   const handleConnect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -138,9 +140,16 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
     setConfirmDelete(null);
   };
 
+  const availableTypes = Array.from(new Set(devices.map(d => d.type)));
+  const filtered = devices.filter(d => {
+    const statusMatch = filterStatus === "all" || d.status === filterStatus || (filterStatus === "disconnected" && d.status !== "connected");
+    const typeMatch = filterType === "all" || d.type === filterType;
+    return statusMatch && typeMatch;
+  });
+
   return (
     <div className="animate-fade-in-up">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Мои устройства</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -176,6 +185,35 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
         )}
       </div>
 
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {(["all", "connected", "disconnected"] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setFilterStatus(s)}
+            className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+              filterStatus === s
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {s === "all" ? "Все" : s === "connected" ? "Подключено" : "Отключено"}
+          </button>
+        ))}
+        {availableTypes.map(type => (
+          <button
+            key={type}
+            onClick={() => setFilterType(filterType === type ? "all" : type)}
+            className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+              filterType === type
+                ? "bg-secondary text-foreground border-primary/50"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {deviceLabel[type]}
+          </button>
+        ))}
+      </div>
+
       {devices.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">
           <Icon name="Cpu" size={32} className="mx-auto mb-3 opacity-30" />
@@ -183,8 +221,15 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
         </div>
       )}
 
+      {devices.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-10 text-muted-foreground text-sm">
+          <Icon name="SearchX" size={28} className="mx-auto mb-3 opacity-30" />
+          <p>Нет устройств, соответствующих фильтру.</p>
+        </div>
+      )}
+
       <div className="space-y-2">
-        {devices.map((device, i) => (
+        {filtered.map((device, i) => (
           <div
             key={device.id}
             onClick={() => setSelected(selected === device.id ? null : device.id)}
