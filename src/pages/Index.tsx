@@ -91,6 +91,7 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
   const [selected, setSelected] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDisconnectAll, setConfirmDisconnectAll] = useState(false);
 
   const handleConnect = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -103,8 +104,19 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
 
   const handleDisconnectAll = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setConfirmDisconnectAll(true);
+  };
+
+  const handleDisconnectAllConfirm = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDisconnectAll();
     setSelected(null);
+    setConfirmDisconnectAll(false);
+  };
+
+  const handleDisconnectAllCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDisconnectAll(false);
   };
 
   const handleDeleteRequest = (e: React.MouseEvent, id: string) => {
@@ -136,13 +148,31 @@ function DevicesSection({ devices, onConnect, onDisconnectAll, onDelete }: Devic
           </p>
         </div>
         {devices.some(d => d.status === "connected") && (
-          <button
-            onClick={handleDisconnectAll}
-            className="flex items-center gap-2 text-xs text-danger border border-danger/30 hover:border-danger/60 px-3 py-1.5 rounded transition-colors"
-          >
-            <Icon name="BluetoothOff" size={12} />
-            Отключить все
-          </button>
+          confirmDisconnectAll ? (
+            <div className="flex items-center gap-2 animate-fade-in-up">
+              <span className="text-xs text-muted-foreground">Отключить все?</span>
+              <button
+                onClick={handleDisconnectAllConfirm}
+                className="text-xs bg-danger text-white hover:bg-danger/90 px-3 py-1.5 rounded transition-colors"
+              >
+                Да
+              </button>
+              <button
+                onClick={handleDisconnectAllCancel}
+                className="text-xs border border-border hover:border-border/80 px-3 py-1.5 rounded transition-colors text-muted-foreground hover:text-foreground"
+              >
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleDisconnectAll}
+              className="flex items-center gap-2 text-xs text-danger border border-danger/30 hover:border-danger/60 px-3 py-1.5 rounded transition-colors"
+            >
+              <Icon name="BluetoothOff" size={12} />
+              Отключить все
+            </button>
+          )
         )}
       </div>
 
